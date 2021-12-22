@@ -120,6 +120,7 @@ pub fn generateFunction(
         //.i386 => return Function(.i386).generate(bin_file, src_loc, func, air, liveness, code, debug_output),
         .x86_64 => return @import("arch/x86_64/CodeGen.zig").generate(bin_file, src_loc, func, air, liveness, code, debug_output),
         //.xcore => return Function(.xcore).generate(bin_file, src_loc, func, air, liveness, code, debug_output),
+        //.xtensa => return Function(.xtensa).generate(bin_file, src_loc, func, air, liveness, code, debug_output),
         //.nvptx => return Function(.nvptx).generate(bin_file, src_loc, func, air, liveness, code, debug_output),
         //.nvptx64 => return Function(.nvptx64).generate(bin_file, src_loc, func, air, liveness, code, debug_output),
         //.le32 => return Function(.le32).generate(bin_file, src_loc, func, air, liveness, code, debug_output),

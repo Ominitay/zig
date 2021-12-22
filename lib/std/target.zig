@@ -457,6 +457,7 @@ pub const Target = struct {
     pub const ve = @import("target/ve.zig");
     pub const wasm = @import("target/wasm.zig");
     pub const x86 = @import("target/x86.zig");
+    pub const xtensa = @import("target/xtensa.zig");
 
     pub const Abi = enum {
         none,
@@ -794,6 +795,7 @@ pub const Target = struct {
             i386,
             x86_64,
             xcore,
+            xtensa,
             nvptx,
             nvptx64,
             le32,
@@ -934,6 +936,7 @@ pub const Target = struct {
                     .thumbeb => ._ARM,
                     .i386 => ._386,
                     .xcore => ._XCORE,
+                    .xtensa => ._XTENSA,
                     .nvptx => ._NONE,
                     .amdil => ._NONE,
                     .hsail => ._NONE,
@@ -995,6 +998,7 @@ pub const Target = struct {
                     .thumbeb => .Thumb,
                     .i386 => .I386,
                     .xcore => .Unknown,
+                    .xtensa => .Unknown,
                     .nvptx => .Unknown,
                     .amdil => .Unknown,
                     .hsail => .Unknown,
@@ -1075,6 +1079,7 @@ pub const Target = struct {
                     .shave,
                     .ve,
                     .spu_2,
+                    .xtensa,
                     // GPU bitness is opaque. For now, assume little endian.
                     .spirv32,
                     .spirv64,
@@ -1138,6 +1143,7 @@ pub const Target = struct {
                     .renderscript32,
                     .aarch64_32,
                     .spirv32,
+                    .xtensa,
                     => return 32,
 
                     .aarch64,
@@ -1206,6 +1212,7 @@ pub const Target = struct {
                     .nvptx, .nvptx64 => &nvptx.all_features,
                     .ve => &ve.all_features,
                     .wasm32, .wasm64 => &wasm.all_features,
+                    .xtensa => &xtensa.all_features,
 
                     else => &[0]Cpu.Feature{},
                 };
@@ -1230,6 +1237,7 @@ pub const Target = struct {
                     .nvptx, .nvptx64 => comptime allCpusFromDecls(nvptx.cpu),
                     .ve => comptime allCpusFromDecls(ve.cpu),
                     .wasm32, .wasm64 => comptime allCpusFromDecls(wasm.cpu),
+                    .xtensa => comptime allCpusFromDecls(xtensa.cpu),
 
                     else => &[0]*const Model{},
                 };
@@ -1292,6 +1300,7 @@ pub const Target = struct {
                     .nvptx, .nvptx64 => &nvptx.cpu.sm_20,
                     .ve => &ve.cpu.generic,
                     .wasm32, .wasm64 => &wasm.cpu.generic,
+                    .xtensa => &xtensa.cpu.generic,
 
                     else => &S.generic_model,
                 };
@@ -1609,6 +1618,7 @@ pub const Target = struct {
                 .avr,
                 .spirv32,
                 .spirv64,
+                .xtensa,
                 => return result,
 
                 // TODO go over each item in this list and either move it to the above list, or

@@ -467,48 +467,51 @@ pub fn HashMap(
             return self.unmanaged.valueIterator();
         }
 
-        /// If key exists this function cannot fail.
-        /// If there is an existing item with `key`, then the result
-        /// `Entry` pointers point to it, and found_existing is true.
-        /// Otherwise, puts a new item with undefined value, and
-        /// the `Entry` pointers point to it. Caller should then initialize
+        /// If the key exists this function cannot fail.
+        /// If there is an existing item with `key`, then the resulting
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller should then initialize
         /// the value (but not the key).
         pub fn getOrPut(self: *Self, key: K) !GetOrPutResult {
             return self.unmanaged.getOrPutContext(self.allocator, key, self.ctx);
         }
 
-        /// If key exists this function cannot fail.
-        /// If there is an existing item with `key`, then the result
-        /// `Entry` pointers point to it, and found_existing is true.
-        /// Otherwise, puts a new item with undefined key and value, and
-        /// the `Entry` pointers point to it. Caller must then initialize
-        /// the key and value.
+        /// If the key exists this function cannot fail.
+        /// If there is an existing item with `key`, then the resulting
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller must then initialize
+        /// both the key and the value.
         pub fn getOrPutAdapted(self: *Self, key: anytype, ctx: anytype) !GetOrPutResult {
             return self.unmanaged.getOrPutContextAdapted(self.allocator, key, ctx, self.ctx);
         }
 
-        /// If there is an existing item with `key`, then the result
-        /// `Entry` pointers point to it, and found_existing is true.
-        /// Otherwise, puts a new item with undefined value, and
-        /// the `Entry` pointers point to it. Caller should then initialize
+        /// If there is an existing item with `key`, then the resulting
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller should then initialize
         /// the value (but not the key).
-        /// If a new entry needs to be stored, this function asserts there
+        /// If a new entry needs to be stored, this function asserts that there
         /// is enough capacity to store it.
         pub fn getOrPutAssumeCapacity(self: *Self, key: K) GetOrPutResult {
             return self.unmanaged.getOrPutAssumeCapacityContext(key, self.ctx);
         }
 
-        /// If there is an existing item with `key`, then the result
-        /// `Entry` pointers point to it, and found_existing is true.
-        /// Otherwise, puts a new item with undefined value, and
-        /// the `Entry` pointers point to it. Caller must then initialize
-        /// the key and value.
-        /// If a new entry needs to be stored, this function asserts there
+        /// If there is an existing item with `key`, then the resulting
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller must then initialize
+        /// both the key and the value.
+        /// If a new entry needs to be stored, this function asserts that there
         /// is enough capacity to store it.
         pub fn getOrPutAssumeCapacityAdapted(self: *Self, key: anytype, ctx: anytype) GetOrPutResult {
             return self.unmanaged.getOrPutAssumeCapacityAdapted(self.allocator, key, ctx);
         }
 
+        /// If the key exists this function cannot fail.
+        /// This function sets the value of the `Entry` with `key` to `value`,
+        /// creating a new item if it doesn't already exist.
         pub fn getOrPutValue(self: *Self, key: K, value: V) !Entry {
             return self.unmanaged.getOrPutValueContext(self.allocator, key, value, self.ctx);
         }
@@ -534,8 +537,9 @@ pub fn HashMap(
             return self.unmanaged.capacity();
         }
 
-        /// Clobbers any existing data. To detect if a put would clobber
-        /// existing data, see `getOrPut`.
+        /// Inserts an entry if the associated key is not already present,
+        /// otherwise overwrites the preexisting value.
+        /// To detect if a put would overwrite existing data, use `getOrPut`.
         pub fn put(self: *Self, key: K, value: V) !void {
             return self.unmanaged.putContext(self.allocator, key, value, self.ctx);
         }
@@ -566,12 +570,13 @@ pub fn HashMap(
         }
 
         /// Inserts a new `Entry` into the hash map, returning the previous one, if any.
-        /// If insertion happuns, asserts there is enough capacity without allocating.
+        /// If insertion happens, asserts there is enough capacity without allocating.
         pub fn fetchPutAssumeCapacity(self: *Self, key: K, value: V) ?KV {
             return self.unmanaged.fetchPutAssumeCapacityContext(key, value, self.ctx);
         }
 
-        /// Removes a value from the map and returns the removed kv pair.
+        /// If there is an `Entry` with a matching key, it is deleted from
+        /// the hash map, and a copy is returned from this function.
         pub fn fetchRemove(self: *Self, key: K) ?KV {
             return self.unmanaged.fetchRemoveContext(key, self.ctx);
         }
@@ -580,7 +585,7 @@ pub fn HashMap(
             return self.unmanaged.fetchRemoveAdapted(key, ctx);
         }
 
-        /// Finds the value associated with a key in the map
+        /// Returns a copy of the value associated with the key, if present.
         pub fn get(self: Self, key: K) ?V {
             return self.unmanaged.getContext(key, self.ctx);
         }
@@ -588,6 +593,7 @@ pub fn HashMap(
             return self.unmanaged.getAdapted(key, ctx);
         }
 
+        /// Returns a pointer to the value associated with the key, if present.
         pub fn getPtr(self: Self, key: K) ?*V {
             return self.unmanaged.getPtrContext(key, self.ctx);
         }
@@ -603,6 +609,7 @@ pub fn HashMap(
             return self.unmanaged.getKeyAdapted(key, ctx);
         }
 
+        /// Returns a copy of the actual key associated with an adapted key, if present.
         pub fn getKeyPtr(self: Self, key: K) ?*K {
             return self.unmanaged.getKeyPtrContext(key, self.ctx);
         }
@@ -614,12 +621,11 @@ pub fn HashMap(
         pub fn getEntry(self: Self, key: K) ?Entry {
             return self.unmanaged.getEntryContext(key, self.ctx);
         }
-
         pub fn getEntryAdapted(self: Self, key: anytype, ctx: anytype) ?Entry {
             return self.unmanaged.getEntryAdapted(key, ctx);
         }
 
-        /// Check if the map contains a key
+        /// Returns true if the map contains `key`.
         pub fn contains(self: Self, key: K) bool {
             return self.unmanaged.containsContext(key, self.ctx);
         }
@@ -634,7 +640,6 @@ pub fn HashMap(
         pub fn remove(self: *Self, key: K) bool {
             return self.unmanaged.removeContext(key, self.ctx);
         }
-
         pub fn removeAdapted(self: *Self, key: anytype, ctx: anytype) bool {
             return self.unmanaged.removeAdapted(key, ctx);
         }
@@ -883,6 +888,10 @@ pub fn HashMapUnmanaged(
             return size * 100 < max_load_percentage * cap;
         }
 
+        /// Release the backing array and invalidate this map.
+        /// This does *not* deinit keys, values, or the context!
+        /// If your keys or values need to be released, ensure
+        /// that that is done before calling this function.
         pub fn deinit(self: *Self, allocator: Allocator) void {
             self.deallocate(allocator);
             self.* = undefined;
@@ -896,6 +905,8 @@ pub fn HashMapUnmanaged(
 
         pub const ensureCapacity = @compileError("deprecated; call `ensureUnusedCapacity` or `ensureTotalCapacity`");
 
+        /// Increases capacity, guaranteeing that insertions up until
+        /// `new_size` will not cause an allocation, and therefore cannot fail.
         pub fn ensureTotalCapacity(self: *Self, allocator: Allocator, new_size: Size) !void {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call ensureTotalCapacityContext instead.");
@@ -906,6 +917,9 @@ pub fn HashMapUnmanaged(
                 try self.growIfNeeded(allocator, new_size - self.size, ctx);
         }
 
+        /// Increases capacity, guaranteeing that insertions up until
+        /// `additional_count` **more** items will not cause an allocation, and
+        /// therefore cannot fail.
         pub fn ensureUnusedCapacity(self: *Self, allocator: Allocator, additional_size: Size) !void {
             return ensureUnusedCapacityContext(self, allocator, additional_size, undefined);
         }
@@ -913,6 +927,10 @@ pub fn HashMapUnmanaged(
             return ensureTotalCapacityContext(self, allocator, self.count() + additional_size, ctx);
         }
 
+        /// Empty the map, but keep the backing allocation for future use.
+        /// This does *not* free keys or values! Be sure to
+        /// release them if they need deinitialization before
+        /// calling this function.
         pub fn clearRetainingCapacity(self: *Self) void {
             if (self.metadata) |_| {
                 self.initMetadatas();
@@ -921,12 +939,17 @@ pub fn HashMapUnmanaged(
             }
         }
 
+        /// Empty the map and release the backing allocation.
+        /// This does *not* free keys or values! Be sure to
+        /// release them if they need deinitialization before
+        /// calling this function.
         pub fn clearAndFree(self: *Self, allocator: Allocator) void {
             self.deallocate(allocator);
             self.size = 0;
             self.available = 0;
         }
 
+        /// Return the number of items in the map.
         pub fn count(self: *const Self) Size {
             return self.size;
         }
@@ -943,16 +966,22 @@ pub fn HashMapUnmanaged(
             return self.header().values;
         }
 
+        /// Returns the number of total elements which may be present before it is
+        /// no longer guaranteed that no allocations will be performed.
         pub fn capacity(self: *const Self) Size {
             if (self.metadata == null) return 0;
 
             return self.header().capacity;
         }
 
+        /// Create an iterator over the entries in the map.
+        /// The iterator is invalidated if the map is modified.
         pub fn iterator(self: *const Self) Iterator {
             return .{ .hm = self };
         }
 
+        /// Create an iterator over the keys in the map.
+        /// The iterator is invalidated if the map is modified.
         pub fn keyIterator(self: *const Self) KeyIterator {
             if (self.metadata) |metadata| {
                 return .{
@@ -969,6 +998,8 @@ pub fn HashMapUnmanaged(
             }
         }
 
+        /// Create an iterator over the values in the map.
+        /// The iterator is invalidated if the map is modified.
         pub fn valueIterator(self: *const Self) ValueIterator {
             if (self.metadata) |metadata| {
                 return .{
@@ -985,7 +1016,8 @@ pub fn HashMapUnmanaged(
             }
         }
 
-        /// Insert an entry in the map. Assumes it is not already present.
+        /// Inserts a key-value pair into the hash map, asserting that no previous
+        /// entry with the same key is already present
         pub fn putNoClobber(self: *Self, allocator: Allocator, key: K, value: V) !void {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call putNoClobberContext instead.");
@@ -1011,8 +1043,9 @@ pub fn HashMapUnmanaged(
             gop.value_ptr.* = value;
         }
 
-        /// Insert an entry in the map. Assumes it is not already present,
-        /// and that no allocation is needed.
+        /// Asserts there is enough capacity to store the new key-value pair.
+        /// Asserts that it does not clobber any existing data.
+        /// To detect if a put would clobber existing data, see `getOrPutAssumeCapacity`.
         pub fn putAssumeCapacityNoClobber(self: *Self, key: K, value: V) void {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call putAssumeCapacityNoClobberContext instead.");
@@ -1082,7 +1115,7 @@ pub fn HashMapUnmanaged(
         }
 
         /// If there is an `Entry` with a matching key, it is deleted from
-        /// the hash map, and then returned from this function.
+        /// the hash map, and a copy is returned from this function.
         pub fn fetchRemove(self: *Self, key: K) ?KV {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call fetchRemoveContext instead.");
@@ -1112,10 +1145,10 @@ pub fn HashMapUnmanaged(
         /// Find the index containing the data for the given key.
         /// Whether this function returns null is almost always
         /// branched on after this function returns, and this function
-        /// returns null/not null from separate code paths.  We
+        /// returns null/not null from separate code paths. We
         /// want the optimizer to remove that branch and instead directly
         /// fuse the basic blocks after the branch to the basic blocks
-        /// from this function.  To encourage that, this function is
+        /// from this function. To encourage that, this function is
         /// marked as inline.
         inline fn getIndex(self: Self, key: anytype, ctx: anytype) ?usize {
             comptime verifyContext(@TypeOf(ctx), @TypeOf(key), K, Hash, false);
@@ -1163,6 +1196,7 @@ pub fn HashMapUnmanaged(
             return null;
         }
 
+        /// Finds the key and value associated with a key in the map
         pub fn getEntry(self: Self, key: K) ?Entry {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getEntryContext instead.");
@@ -1181,7 +1215,9 @@ pub fn HashMapUnmanaged(
             return null;
         }
 
-        /// Insert an entry if the associated key is not already present, otherwise update preexisting value.
+        /// Inserts an entry if the associated key is not already present,
+        /// otherwise overwrites the preexisting value.
+        /// To detect if a put would overwrite existing data, use `getOrPut`.
         pub fn put(self: *Self, allocator: Allocator, key: K, value: V) !void {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call putContext instead.");
@@ -1192,7 +1228,7 @@ pub fn HashMapUnmanaged(
             result.value_ptr.* = value;
         }
 
-        /// Get an optional pointer to the actual key associated with adapted key, if present.
+        /// Returns an optional pointer to the actual key associated with adapted key, if present.
         pub fn getKeyPtr(self: Self, key: K) ?*K {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getKeyPtrContext instead.");
@@ -1208,7 +1244,7 @@ pub fn HashMapUnmanaged(
             return null;
         }
 
-        /// Get a copy of the actual key associated with adapted key, if present.
+        /// Returns a copy of the actual key associated with an adapted key, if present.
         pub fn getKey(self: Self, key: K) ?K {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getKeyContext instead.");
@@ -1224,7 +1260,7 @@ pub fn HashMapUnmanaged(
             return null;
         }
 
-        /// Get an optional pointer to the value associated with key, if present.
+        /// Returns a pointer to the value associated with the key, if present.
         pub fn getPtr(self: Self, key: K) ?*V {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getPtrContext instead.");
@@ -1240,7 +1276,7 @@ pub fn HashMapUnmanaged(
             return null;
         }
 
-        /// Get a copy of the value associated with key, if present.
+        /// Returns a copy of the value associated with the key, if present.
         pub fn get(self: Self, key: K) ?V {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getContext instead.");
@@ -1256,6 +1292,12 @@ pub fn HashMapUnmanaged(
             return null;
         }
 
+        /// If the key exists this function cannot fail.
+        /// If there is an existing item with `key`, then the result
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller should then initialize
+        /// the value (but not the key).
         pub fn getOrPut(self: *Self, allocator: Allocator, key: K) !GetOrPutResult {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getOrPutContext instead.");
@@ -1268,6 +1310,13 @@ pub fn HashMapUnmanaged(
             }
             return gop;
         }
+
+        /// If the key exists this function cannot fail.
+        /// If there is an existing item with `key`, then the result
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller must then initialize
+        /// both the key and the value.
         pub fn getOrPutAdapted(self: *Self, allocator: Allocator, key: anytype, key_ctx: anytype) !GetOrPutResult {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getOrPutContextAdapted instead.");
@@ -1288,6 +1337,13 @@ pub fn HashMapUnmanaged(
             return self.getOrPutAssumeCapacityAdapted(key, key_ctx);
         }
 
+        /// If there is an existing item with `key`, then the result
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller should then initialize
+        /// the value (but not the key).
+        /// If a new entry needs to be stored, this function asserts that there
+        /// is enough capacity to store it.
         pub fn getOrPutAssumeCapacity(self: *Self, key: K) GetOrPutResult {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getOrPutAssumeCapacityContext instead.");
@@ -1300,6 +1356,14 @@ pub fn HashMapUnmanaged(
             }
             return result;
         }
+
+        /// If there is an existing item with `key`, then the result
+        /// `Entry` pointers point to it, and `found_existing` is true.
+        /// Otherwise, the function puts a new item with an undefined value, and
+        /// the `Entry` pointers point to it. The caller must then initialize
+        /// both the key and the value.
+        /// If a new entry needs to be stored, this function asserts that there
+        /// is enough capacity to store it.
         pub fn getOrPutAssumeCapacityAdapted(self: *Self, key: anytype, ctx: anytype) GetOrPutResult {
             comptime verifyContext(@TypeOf(ctx), @TypeOf(key), K, Hash, false);
 
@@ -1367,6 +1431,9 @@ pub fn HashMapUnmanaged(
             };
         }
 
+        /// If the key exists this function cannot fail.
+        /// This function sets the value of the `Entry` with `key` to `value`,
+        /// creating a new item if it doesn't already exist.
         pub fn getOrPutValue(self: *Self, allocator: Allocator, key: K, value: V) !Entry {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call getOrPutValueContext instead.");
@@ -1381,7 +1448,7 @@ pub fn HashMapUnmanaged(
             return Entry{ .key_ptr = res.key_ptr, .value_ptr = res.value_ptr };
         }
 
-        /// Return true if there is a value associated with key in the map.
+        /// Return true if the map contains `key`.
         pub fn contains(self: *const Self, key: K) bool {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call containsContext instead.");
@@ -1402,9 +1469,8 @@ pub fn HashMapUnmanaged(
             self.available += 1;
         }
 
-        /// If there is an `Entry` with a matching key, it is deleted from
-        /// the hash map, and this function returns true.  Otherwise this
-        /// function returns false.
+        /// If there is an `Entry` with a matching key, this function deletes it
+        /// from the hash map and returns true.
         pub fn remove(self: *Self, key: K) bool {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call removeContext instead.");
@@ -1456,11 +1522,14 @@ pub fn HashMapUnmanaged(
             }
         }
 
+        /// Creates a copy of this map, using a specified allocator
         pub fn clone(self: Self, allocator: Allocator) !Self {
             if (@sizeOf(Context) != 0)
                 @compileError("Cannot infer context " ++ @typeName(Context) ++ ", call cloneContext instead.");
             return self.cloneContext(allocator, @as(Context, undefined));
         }
+
+        /// Creates a copy of this map, using a specified allocator and context
         pub fn cloneContext(self: Self, allocator: Allocator, new_ctx: anytype) !HashMapUnmanaged(K, V, @TypeOf(new_ctx), max_load_percentage) {
             var other = HashMapUnmanaged(K, V, @TypeOf(new_ctx), max_load_percentage){};
             if (self.size == 0)

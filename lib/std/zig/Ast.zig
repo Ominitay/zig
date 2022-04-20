@@ -533,6 +533,7 @@ pub fn firstToken(tree: Ast, node: Node.Index) TokenIndex {
             n = datas[n].lhs;
         },
 
+        .container_field_tuple,
         .container_field_init,
         .container_field_align,
         .container_field,
@@ -988,6 +989,16 @@ pub fn lastToken(tree: Ast, node: Node.Index) TokenIndex {
                 }
             }
         },
+        .container_field_tuple => {
+            if (datas[n].rhs != 0) {
+                n = datas[n].rhs;
+            } else if (datas[n].lhs != 0) {
+                end_offset += 1; //for the rparen
+                n = datas[n].lhs;
+            } else {
+                n = main_tokens[n];
+            }
+        },
         .container_field_init => {
             if (datas[n].rhs != 0) {
                 n = datas[n].rhs;
@@ -1291,6 +1302,17 @@ pub fn containerField(tree: Ast, node: Node.Index) full.ContainerField {
         .type_expr = data.lhs,
         .value_expr = extra.value_expr,
         .align_expr = extra.align_expr,
+    });
+}
+
+pub fn containerFieldTuple(tree: Ast, node: Node.Index) full.ContainerField {
+    assert(tree.nodes.items(.tag)[node] == .container_field_tuple);
+    const data = tree.nodes.items(.data)[node];
+    return tree.fullContainerField(.{
+        .name_token = 0,
+        .type_expr = tree.nodes.items(.main_token)[node],
+        .value_expr = data.rhs,
+        .align_expr = data.lhs,
     });
 }
 
@@ -2971,6 +2993,10 @@ pub const Node = struct {
         /// Same as tagged_union_enum_tag but there is known to be a trailing comma
         /// or semicolon before the rbrace.
         tagged_union_enum_tag_trailing,
+        /// `a align(lhs) = rhs`. lhs and rhs can be omitted.
+        /// main_token is the type expression.
+        /// lastToken() does not include the possible trailing comma.
+        container_field_tuple,
         /// `a: lhs = rhs,`. lhs and rhs can be omitted.
         /// main_token is the field name identifier.
         /// lastToken() does not include the possible trailing comma.
@@ -3015,6 +3041,7 @@ pub const Node = struct {
 
         pub fn isContainerField(tag: Tag) bool {
             return switch (tag) {
+                .container_field_tuple,
                 .container_field_init,
                 .container_field_align,
                 .container_field,

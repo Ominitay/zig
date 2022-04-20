@@ -57,7 +57,7 @@ pub fn parse(gpa: Allocator, source: [:0]const u8) Allocator.Error!Ast {
         .main_token = 0,
         .data = undefined,
     });
-    const root_members = try parser.parseContainerMembers();
+    const root_members = try parser.parseContainerMembers(false);
     const root_decls = try root_members.toSpan(&parser);
     if (parser.token_tags[parser.tok_i] != .eof) {
         try parser.warnExpected(.eof);
@@ -233,7 +233,7 @@ const Parser = struct {
     ///      / KEYWORD_pub? TopLevelDecl ContainerDeclarations
     ///      /
     /// TopLevelComptime <- KEYWORD_comptime BlockExpr
-    fn parseContainerMembers(p: *Parser) !Members {
+    fn parseContainerMembers(p: *Parser, struct_or_tuple: bool) !Members {
         const scratch_top = p.scratch.items.len;
         defer p.scratch.shrinkRetainingCapacity(scratch_top);
 
@@ -389,7 +389,7 @@ const Parser = struct {
                 .identifier => {
                     const identifier = p.tok_i;
                     defer last_field = identifier;
-                    const container_field = try p.expectContainerFieldRecoverable();
+                    const container_field = if (struct_or_tuple) try p.expectStructOrTupleFieldRecoverable() else try p.expectContainerFieldRecoverable();
                     if (container_field != 0) {
                         switch (field_state) {
                             .none => field_state = .seen,
@@ -847,6 +847,64 @@ const Parser = struct {
                 },
             });
         }
+    }
+
+    fn expectStructOrTupleField(p: *Parser) !Node.Index {
+        _ = p.eatToken(.keyword_comptime);
+
+        const name_token = if (p.token_tags[p.tok_i + 1] == .colon) p.nextToken() else 0;
+        _ = p.eatToken(.colon);
+
+        const type_expr = try p.expectTypeExpr();
+        const align_expr = try p.parseByteAlign();
+        const value_expr = if (p.eatToken(.equal) == null) 0 else try p.expectExpr();
+
+        if (name_token == 0) {
+            return p.addNode(.{
+                .tag = .container_field_tuple,
+                .main_token = type_expr,
+                .data = .{
+                    .lhs = align_expr,
+                    .rhs = value_expr,
+                },
+            });
+        } else if (align_expr == 0) {
+            return p.addNode(.{
+                .tag = .container_field_init,
+                .main_token = name_token,
+                .data = .{
+                    .lhs = type_expr,
+                    .rhs = value_expr,
+                },
+            });
+        } else if (value_expr == 0) {
+            return p.addNode(.{ .tag = .container_field_align, .main_token = name_token, .data = .{
+                .lhs = type_expr,
+                .rhs = value_expr,
+            } });
+        } else {
+            return p.addNode(.{
+                .tag = .container_field,
+                .main_token = name_token,
+                .data = .{
+                    .lhs = type_expr,
+                    .rhs = try p.addExtra(Node.ContainerField{
+                        .value_expr = value_expr,
+                        .align_expr = align_expr,
+                    }),
+                },
+            });
+        }
+    }
+
+    fn expectStructOrTupleFieldRecoverable(p: *Parser) error{OutOfMemory}!Node.Index {
+        return p.expectStructOrTupleField() catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.ParseError => {
+                p.findNextContainerMember();
+                return null_node;
+            },
+        };
     }
 
     /// ContainerField <- KEYWORD_comptime? IDENTIFIER (COLON (KEYWORD_anytype / TypeExpr) ByteAlign?)? (EQUAL Expr)?
@@ -3356,7 +3414,7 @@ const Parser = struct {
                             _ = try p.expectToken(.r_paren);
 
                             _ = try p.expectToken(.l_brace);
-                            const members = try p.parseContainerMembers();
+                            const members = try p.parseContainerMembers(false);
                             const members_span = try members.toSpan(p);
                             _ = try p.expectToken(.r_brace);
                             return p.addNode(.{
@@ -3374,7 +3432,7 @@ const Parser = struct {
                             _ = try p.expectToken(.r_paren);
 
                             _ = try p.expectToken(.l_brace);
-                            const members = try p.parseContainerMembers();
+                            const members = try p.parseContainerMembers(false);
                             _ = try p.expectToken(.r_brace);
                             if (members.len <= 2) {
                                 return p.addNode(.{
@@ -3418,7 +3476,7 @@ const Parser = struct {
             },
         };
         _ = try p.expectToken(.l_brace);
-        const members = try p.parseContainerMembers();
+        const members = try p.parseContainerMembers(p.token_tags[main_token] == .keyword_struct);
         _ = try p.expectToken(.r_brace);
         if (arg_expr == 0) {
             if (members.len <= 2) {

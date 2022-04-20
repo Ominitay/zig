@@ -158,6 +158,7 @@ fn renderMember(gpa: Allocator, ais: *Ais, tree: Ast, decl: Ast.Node.Index, spac
             try renderExpression(gpa, ais, tree, datas[decl].rhs, space);
         },
 
+        .container_field_tuple => return renderContainerField(gpa, ais, tree, tree.containerFieldTuple(decl), space),
         .container_field_init => return renderContainerField(gpa, ais, tree, tree.containerFieldInit(decl), space),
         .container_field_align => return renderContainerField(gpa, ais, tree, tree.containerFieldAlign(decl), space),
         .container_field => return renderContainerField(gpa, ais, tree, tree.containerField(decl), space),
@@ -710,6 +711,7 @@ fn renderExpression(gpa: Allocator, ais: *Ais, tree: Ast, node: Ast.Node.Index, 
         .container_field => unreachable,
         .container_field_init => unreachable,
         .container_field_align => unreachable,
+        .container_field_tuple => unreachable,
         .root => unreachable,
         .global_var_decl => unreachable,
         .local_var_decl => unreachable,
@@ -1162,6 +1164,35 @@ fn renderContainerField(
 ) Error!void {
     if (field.comptime_token) |t| {
         try renderToken(ais, tree, t, .space); // comptime
+    }
+    if (field.ast.name_token == 0) {
+        if (field.ast.align_expr == 0 and field.ast.value_expr == 0) {
+            return renderExpressionComma(gpa, ais, tree, field.ast.type_expr, space); // type
+        }
+        if (field.ast.align_expr == 0) {
+            try renderExpression(gpa, ais, tree, field.ast.type_expr, .space); // type
+            const equals = tree.lastToken(field.ast.type_expr) + 1;
+            try renderToken(ais, tree, equals, .space); // =
+            return renderExpressionComma(gpa, ais, tree, field.ast.value_expr, space); // value
+        }
+        if (field.ast.value_expr == 0) {
+            try renderExpression(gpa, ais, tree, field.ast.type_expr, .space); // type
+            const align_token = tree.firstToken(field.ast.align_expr) - 2;
+            try renderToken(ais, tree, align_token, .none); // align
+            try renderToken(ais, tree, align_token + 1, .none); // (
+            try renderExpression(gpa, ais, tree, field.ast.align_expr, .none); // alignment
+            const rparen = tree.lastToken(field.ast.align_expr) + 1;
+            return renderTokenComma(ais, tree, rparen, space); // )
+        }
+        try renderExpression(gpa, ais, tree, field.ast.type_expr, .space); // type
+        const align_token = tree.firstToken(field.ast.align_expr) - 2;
+        try renderToken(ais, tree, align_token, .none); // align
+        try renderToken(ais, tree, align_token + 1, .none); // (
+        try renderExpression(gpa, ais, tree, field.ast.align_expr, .none); // alignment
+        const rparen = tree.lastToken(field.ast.align_expr) + 1;
+        try renderToken(ais, tree, rparen, .space); // )
+        try renderToken(ais, tree, rparen + 1, .space); // =
+        return renderExpressionComma(gpa, ais, tree, field.ast.value_expr, space); // value
     }
     if (field.ast.type_expr == 0 and field.ast.value_expr == 0) {
         return renderTokenComma(ais, tree, field.ast.name_token, space); // name

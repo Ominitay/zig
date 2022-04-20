@@ -363,6 +363,7 @@ fn lvalExpr(gz: *GenZir, scope: *Scope, node: Ast.Node.Index) InnerError!Zir.Ins
         .aligned_var_decl => unreachable,
         .switch_case => unreachable,
         .switch_case_one => unreachable,
+        .container_field_tuple => unreachable,
         .container_field_init => unreachable,
         .container_field_align => unreachable,
         .container_field => unreachable,
@@ -557,7 +558,8 @@ fn expr(gz: *GenZir, scope: *Scope, rl: ResultLoc, node: Ast.Node.Index) InnerEr
     switch (node_tags[node]) {
         .root => unreachable, // Top-level declaration.
         .@"usingnamespace" => unreachable, // Top-level declaration.
-        .test_decl => unreachable, // Top-level declaration.
+        .test_decl => unreachable, // Top-level declaration.a
+        .container_field_tuple => unreachable, // Top-level declaration.
         .container_field_init => unreachable, // Top-level declaration.
         .container_field_align => unreachable, // Top-level declaration.
         .container_field => unreachable, // Top-level declaration.
@@ -4086,18 +4088,44 @@ fn structDeclInner(
 
     var known_non_opv = false;
     var known_comptime_only = false;
-    for (container_decl.ast.members) |member_node| {
+    var is_tuple: ?bool = null;
+    for (container_decl.ast.members) |member_node, i| {
         const member = switch (try containerMember(gz, &namespace.base, &wip_members, member_node)) {
             .decl => continue,
             .field => |field| field,
         };
 
-        const field_name = try astgen.identAsString(member.ast.name_token);
-        wip_members.appendToField(field_name);
+        const have_name = member.ast.name_token != 0;
 
-        if (member.ast.type_expr == 0) {
-            return astgen.failTok(member.ast.name_token, "struct field missing type", .{});
+        if (is_tuple) |is_tuple_unwrapped| {
+            if (is_tuple_unwrapped and have_name)
+                return astgen.failTok(member.ast.name_token, "tuple fields don't have names", .{});
+            if (!is_tuple_unwrapped and !have_name)
+                return astgen.failNode(member.ast.type_expr, "struct field missing name", .{});
+        } else {
+            is_tuple = !have_name;
         }
+
+        const field_name = if (have_name) try astgen.identAsString(member.ast.name_token) else blk: {
+            const string_bytes = &astgen.string_bytes;
+            const string_index = @intCast(u32, string_bytes.items.len);
+            try string_bytes.writer(gpa).print("{d}", .{i});
+            const key = string_bytes.items[string_index..];
+            const gop = try astgen.string_table.getOrPutContextAdapted(gpa, @as([]const u8, key), StringIndexAdapter{
+                .bytes = string_bytes,
+            }, StringIndexContext{
+                .bytes = string_bytes,
+            });
+            if (gop.found_existing) {
+                string_bytes.shrinkRetainingCapacity(string_index);
+                break :blk gop.key_ptr.*;
+            } else {
+                gop.key_ptr.* = string_index;
+                try string_bytes.append(gpa, 0);
+                break :blk string_index;
+            }
+        };
+        wip_members.appendToField(field_name);
 
         const field_type = try typeExpr(&block_scope, &namespace.base, member.ast.type_expr);
         wip_members.appendToField(@enumToInt(field_type));
@@ -4134,6 +4162,7 @@ fn structDeclInner(
             return astgen.failTok(comptime_token, "comptime field without default initialization value", .{});
         }
     }
+    is_tuple = is_tuple != false; // Sets is_tuple to true if null, so `struct {}` is a tuple type
 
     if (!block_scope.isEmpty()) {
         _ = try block_scope.addBreak(.break_inline, decl_inst, .void_value);
@@ -4614,6 +4643,7 @@ fn containerMember(
     const node_tags = tree.nodes.items(.tag);
     const node_datas = tree.nodes.items(.data);
     switch (node_tags[member_node]) {
+        .container_field_tuple => return ContainerMemberResult{ .field = tree.containerFieldTuple(member_node) },
         .container_field_init => return ContainerMemberResult{ .field = tree.containerFieldInit(member_node) },
         .container_field_align => return ContainerMemberResult{ .field = tree.containerFieldAlign(member_node) },
         .container_field => return ContainerMemberResult{ .field = tree.containerField(member_node) },
@@ -8016,6 +8046,7 @@ fn nodeMayNeedMemoryLocation(tree: *const Ast, start_node: Ast.Node.Index, have_
             .test_decl,
             .switch_case,
             .switch_case_one,
+            .container_field_tuple,
             .container_field_init,
             .container_field_align,
             .container_field,
@@ -8249,6 +8280,7 @@ fn nodeMayEvalToError(tree: *const Ast, start_node: Ast.Node.Index) BuiltinFn.Ev
             .test_decl,
             .switch_case,
             .switch_case_one,
+            .container_field_tuple,
             .container_field_init,
             .container_field_align,
             .container_field,
@@ -8461,6 +8493,7 @@ fn nodeImpliesMoreThanOnePossibleValue(tree: *const Ast, start_node: Ast.Node.In
             .test_decl,
             .switch_case,
             .switch_case_one,
+            .container_field_tuple,
             .container_field_init,
             .container_field_align,
             .container_field,
@@ -8703,6 +8736,7 @@ fn nodeImpliesComptimeOnly(tree: *const Ast, start_node: Ast.Node.Index) bool {
             .test_decl,
             .switch_case,
             .switch_case_one,
+            .container_field_tuple,
             .container_field_init,
             .container_field_align,
             .container_field,

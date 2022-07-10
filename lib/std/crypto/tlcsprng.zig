@@ -126,7 +126,7 @@ fn tlsCsprngFill(_: *anyopaque, buffer: []u8) void {
             }
 
             // Since we failed to set up fork safety, we fall back to always
-            // calling getrandom every time.
+            // calling getRandomBytes every time.
             ctx.init_state = .failed;
             return fillWithOsEntropy(buffer);
         },
@@ -166,12 +166,12 @@ fn fillWithCsprng(buffer: []u8) void {
 }
 
 fn fillWithOsEntropy(buffer: []u8) void {
-    os.getrandom(buffer) catch @panic("getrandom() failed to provide entropy");
+    os.getRandomBytes(buffer) catch @panic("getRandomBytes() failed to provide entropy");
 }
 
 fn initAndFill(buffer: []u8) void {
     var seed: [std.crypto.core.Gimli.BLOCKBYTES]u8 = undefined;
-    // Because we panic on getrandom() failing, we provide the opportunity
+    // Because we panic on getRandomBytes() failing, we provide the opportunity
     // to override the default seed function. This also makes
     // `std.crypto.random` available on freestanding targets, provided that
     // the `cryptoRandomSeed` function is provided.

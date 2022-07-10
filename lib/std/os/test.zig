@@ -388,14 +388,21 @@ fn testTls() !void {
     if (x != 1235) return error.TlsBadEndValue;
 }
 
-test "getrandom" {
+test "getRandomBytes" {
     var buf_a: [50]u8 = undefined;
     var buf_b: [50]u8 = undefined;
-    try os.getrandom(&buf_a);
-    try os.getrandom(&buf_b);
+    try os.getRandomBytes(&buf_a);
+    try os.getRandomBytes(&buf_b);
     // If this test fails the chance is significantly higher that there is a bug than
     // that two sets of 50 bytes were equal.
     try expect(!mem.eql(u8, &buf_a, &buf_b));
+}
+
+test "getRandom" {
+    const a = try os.getRandom(u64);
+    const b = try os.getRandom(u64);
+
+    try expect(a != b);
 }
 
 test "getcwd" {

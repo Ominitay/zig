@@ -366,6 +366,8 @@ pub fn fchown(fd: fd_t, owner: ?uid_t, group: ?gid_t) FChownError!void {
     }
 }
 
+pub const getrandom = @compileError("Moved to `os.getRandomBytes`. Also consider using `os.getRandom`");
+
 pub const GetRandomError = OpenError;
 
 /// Obtain a series of random bytes. These bytes can be used to seed user-space
@@ -373,7 +375,7 @@ pub const GetRandomError = OpenError;
 /// When linking against libc, this calls the
 /// appropriate OS-specific library call. Otherwise it uses the zig standard
 /// library implementation.
-pub fn getrandom(buffer: []u8) GetRandomError!void {
+pub fn getRandomBytes(buffer: []u8) GetRandomError!void {
     if (builtin.os.tag == .windows) {
         return windows.RtlGenRandom(buffer);
     }
@@ -419,6 +421,16 @@ pub fn getrandom(buffer: []u8) GetRandomError!void {
         },
         else => return getRandomBytesDevURandom(buffer),
     }
+}
+
+/// Returns a random value for the given type. The random value can be used to seed
+/// user-space random number generators or for cryptographic purposes.
+/// When linking against libc, this calls the appropriate OS-specific library call.
+/// Otherwise it uses the zig standard library implementation.
+pub fn getRandom(comptime T: type) GetRandomError!T {
+    var ret: T = undefined;
+    try getRandomBytes(mem.asBytes(&ret));
+    return ret;
 }
 
 fn getRandomBytesDevURandom(buf: []u8) !void {

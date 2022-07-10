@@ -376,41 +376,41 @@ pub const GetRandomError = OpenError;
 /// appropriate OS-specific library call. Otherwise it uses the zig standard
 /// library implementation.
 pub fn getRandomBytes(buffer: []u8) GetRandomError!void {
-    if (builtin.os.tag == .windows) {
-        return windows.RtlGenRandom(buffer);
-    }
-    if (builtin.os.tag == .linux or builtin.os.tag == .freebsd) {
-        var buf = buffer;
-        const use_c = builtin.os.tag != .linux or
-            std.c.versionCheck(std.builtin.Version{ .major = 2, .minor = 25, .patch = 0 }).ok;
-
-        while (buf.len != 0) {
-            const res = if (use_c) blk: {
-                const rc = std.c.getrandom(buf.ptr, buf.len, 0);
-                break :blk .{
-                    .num_read = @bitCast(usize, rc),
-                    .err = std.c.getErrno(rc),
-                };
-            } else blk: {
-                const rc = linux.getrandom(buf.ptr, buf.len, 0);
-                break :blk .{
-                    .num_read = rc,
-                    .err = linux.getErrno(rc),
-                };
-            };
-
-            switch (res.err) {
-                .SUCCESS => buf = buf[res.num_read..],
-                .INVAL => unreachable,
-                .FAULT => unreachable,
-                .INTR => continue,
-                .NOSYS => return getRandomBytesDevURandom(buf),
-                else => return unexpectedErrno(res.err),
-            }
-        }
-        return;
-    }
     switch (builtin.os.tag) {
+        .windows => {
+            return windows.RtlGenRandom(buffer);
+        },
+        .linux, .freebsd => {
+            var buf = buffer;
+            const use_c = builtin.os.tag != .linux or
+                std.c.versionCheck(std.builtin.Version{ .major = 2, .minor = 25, .patch = 0 }).ok;
+
+            while (buf.len != 0) {
+                const res = if (use_c) blk: {
+                    const rc = std.c.getrandom(buf.ptr, buf.len, 0);
+                    break :blk .{
+                        .num_read = @bitCast(usize, rc),
+                        .err = std.c.getErrno(rc),
+                    };
+                } else blk: {
+                    const rc = linux.getrandom(buf.ptr, buf.len, 0);
+                    break :blk .{
+                        .num_read = rc,
+                        .err = linux.getErrno(rc),
+                    };
+                };
+
+                switch (res.err) {
+                    .SUCCESS => buf = buf[res.num_read..],
+                    .INVAL => unreachable,
+                    .FAULT => unreachable,
+                    .INTR => continue,
+                    .NOSYS => return getRandomBytesDevURandom(buf),
+                    else => return unexpectedErrno(res.err),
+                }
+            }
+            return;
+        },
         .netbsd, .openbsd, .macos, .ios, .tvos, .watchos => {
             system.arc4random_buf(buffer.ptr, buffer.len);
             return;
